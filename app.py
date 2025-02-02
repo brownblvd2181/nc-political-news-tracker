@@ -5,6 +5,7 @@ import pandas as pd
 import csv
 import time
 import nltk
+import os
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from textblob import TextBlob
@@ -12,9 +13,13 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
 
-# Ensure NLTK data is downloaded properly
-nltk.download("punkt")
-nltk.download("stopwords")
+# Force Download NLTK 'punkt' if missing (prevents LookupError)
+nltk_data_path = os.path.expanduser("~/nltk_data")
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+nltk.data.path.append(nltk_data_path)
+nltk.download("punkt", download_dir=nltk_data_path)
+nltk.download("stopwords", download_dir=nltk_data_path)
 
 # Define Politician Images
 POLITICIAN_IMAGES = {
@@ -78,8 +83,8 @@ def get_news(person, keyword="", limit=5):
 
 def generate_trending_topics(news_articles):
     """Generate a word cloud for trending political topics."""
-    nltk.download("punkt")  # Ensure punkt is available in cloud environments
-    nltk.download("stopwords")
+    nltk.download("punkt", download_dir=nltk_data_path)  # Ensure 'punkt' is available
+    nltk.download("stopwords", download_dir=nltk_data_path)
 
     all_titles = " ".join([article["Title"] for article in news_articles])
     words = word_tokenize(all_titles)
