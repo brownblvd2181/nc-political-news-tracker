@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-from streamlit_autorefresh import st_autorefresh  # For auto-refresh on the News page
+from streamlit_autorefresh import st_autorefresh  # Auto-refresh for News page
 
-# Define single-source Google News RSS for each politician
+# Define Google News RSS feeds for each politician
 URLS = {
     "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
     "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
@@ -18,8 +18,8 @@ DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Def
 
 def get_news(person, keyword="", limit=5):
     """
-    Fetch the top news articles for the given person from Google News (RSS).
-    Uses 'lxml-xml' to avoid bs4.FeatureNotFound.
+    Fetch the top news articles for the given person from Google News RSS.
+    Uses 'lxml-xml' to avoid FeatureNotFound. Filters articles by 'keyword' if provided.
     """
     feed_url = URLS.get(person)
     if not feed_url:
@@ -32,6 +32,7 @@ def get_news(person, keyword="", limit=5):
         st.warning(f"Error fetching data from {feed_url}: {e}")
         return []
 
+    # Use 'lxml-xml' parser for RSS feeds
     soup = BeautifulSoup(response.content, "lxml-xml")
 
     articles = []
@@ -39,6 +40,7 @@ def get_news(person, keyword="", limit=5):
         title = item.title.text if item.title else "No Title"
         pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
 
+        # If 'keyword' is provided, only show articles that contain it
         if keyword and keyword.lower() not in title.lower():
             continue
 
@@ -57,14 +59,15 @@ def save_email(email):
         writer.writerow([email])
     return True
 
-# Streamlit page config
+# Configure Streamlit page
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for styling
+# Custom CSS for modern styling
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
-        body { 
+
+        body {
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
         }
@@ -106,14 +109,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Page selection: News or Videos
+# Switch between News and Videos pages
 page = st.sidebar.radio("Select Page:", ["News", "Videos"])
 
 if page == "News":
-    # Auto-refresh the News page every 60 seconds (up to 100 times)
+    # Auto-refresh the News page every 60 seconds, up to 100 times
     st_autorefresh(interval=60000, limit=100, key="news_refresh")
 
-    # Sidebar for News
+    # Sidebar filters for News
     st.sidebar.markdown("## 🔍 Filter News")
     selected_politicians = st.sidebar.multiselect(
         "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
@@ -121,6 +124,7 @@ if page == "News":
     keyword = st.sidebar.text_input("Search for a topic (optional):")
     news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
 
+    # Email subscription
     st.sidebar.markdown("## 📩 Subscribe for Daily News")
     email = st.sidebar.text_input("Enter your email for daily updates")
     if st.sidebar.button("Subscribe"):
@@ -143,7 +147,7 @@ if page == "News":
             if news_articles:
                 st.markdown(f"## 📰 Latest News on {person}")
                 for article in news_articles:
-                    col1, col2 = st.columns([1, 3])
+                    col1, col2 = st.columns([1, 3])  # Two-column layout
                     with col1:
                         st.image(article["Image"], use_container_width=True)
                     with col2:
@@ -162,27 +166,26 @@ elif page == "Videos":
     st.title("🎥 Politician Videos")
     st.markdown("""
     Learn more about the featured politicians through curated videos and brief biographies.
-    Replace these example YouTube links with actual relevant interviews or speeches.
     """)
 
     # Alma Adams
     st.markdown("### Alma Adams")
     st.markdown("Alma Adams is a U.S. Representative for North Carolina's 12th District, focusing on civil rights and education.")
-    st.video("https://www.youtube.com/watch?v=jVroqC_OGmo")  # Example relevant link
+    st.video("https://www.youtube.com/watch?v=jVroqC_OGmo")  # Sample embed link
 
     # Don Davis
     st.markdown("### Don Davis")
     st.markdown("Don Davis is a U.S. Representative for North Carolina's 1st District, emphasizing community issues and development.")
-    st.video("https://www.youtube.com/watch?v=MJBvd1TPbg4")  # Example relevant link
+    st.video("https://www.youtube.com/watch?v=MJBvd1TPbg4")  # Sample embed link
 
     # Mayor Vi Lyles
     st.markdown("### Mayor Vi Lyles")
-    st.markdown("Mayor Vi Lyles leads Charlotte, NC, known for driving innovation and economic growth in the city.")
-    st.video("https://www.youtube.com/watch?v=vSYfYzh4rZ8")  # Example relevant link
+    st.markdown("Mayor Vi Lyles leads Charlotte, NC, recognized for her focus on innovation and economic growth.")
+    st.video("https://www.youtube.com/watch?v=vSYfYzh4rZ8")  # Sample embed link
 
     # Mayor Karen Bass
     st.markdown("### Mayor Karen Bass")
     st.markdown("Mayor Karen Bass serves Los Angeles, focusing on social justice and public service.")
-    st.video("https://www.youtube.com/watch?v=WcOvTx1d05M")  # Example relevant link
+    st.video("https://www.youtube.com/watch?v=WcOvTx1d05M")  # Sample embed link
 
 
