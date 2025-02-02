@@ -50,7 +50,7 @@ def save_email(email):
 # Streamlit UI Configuration
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for better styling
+# Custom CSS for better styling and readability
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
@@ -60,10 +60,10 @@ st.markdown("""
             background-color: #f8f9fa;
         }
         .news-container {
-            padding: 20px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 12px;
             background-color: white;
-            box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
             display: flex;
             align-items: center;
@@ -75,13 +75,15 @@ st.markdown("""
             margin-right: 15px;
         }
         .news-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             color: #2c3e50;
+            margin-bottom: 5px;
         }
         .news-meta {
             font-size: 14px;
             color: #7f8c8d;
+            margin-bottom: 8px;
         }
         .news-link {
             font-size: 16px;
@@ -89,10 +91,14 @@ st.markdown("""
             font-weight: bold;
             text-decoration: none;
         }
+        .news-link:hover {
+            text-decoration: underline;
+        }
         .sidebar-title {
             font-size: 18px;
             font-weight: bold;
             color: #34495e;
+            margin-bottom: 10px;
         }
         .email-box {
             padding: 15px;
@@ -138,7 +144,7 @@ if selected_politicians:
                 st.markdown('<div class="news-container">', unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 3])  # Image on left, text on right
                 with col1:
-                    st.image(article["Image"], use_column_width=True)
+                    st.image(article["Image"], use_container_width=True)  # ✅ Fixed Deprecation Warning
                 with col2:
                     st.markdown(f'<p class="news-title">{article["Title"]}</p>', unsafe_allow_html=True)
                     st.markdown(f'<p class="news-meta">Published: {article["Published"]}</p>', unsafe_allow_html=True)
