@@ -4,17 +4,26 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from textblob import TextBlob
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
 
-# 1. Define the Google Image short links for each politician
+nltk.download("punkt")
+nltk.download("stopwords")
+
+# Define Politician Images (Direct Links Preferred Over Google Short URLs)
 POLITICIAN_IMAGES = {
-    "Alma Adams": "https://images.app.goo.gl/5N76cg754HXF2fVm7",
-    "Don Davis": "https://images.app.goo.gl/zvGnUNafNj68ctJQ6",
-    "Mayor Vi Lyles": "https://images.app.goo.gl/WsX69rpD4Z8aW9pp9",
-    "Mayor Karen Bass": "https://images.app.goo.gl/hdAL5rTjrrqEE9126"
+    "Alma Adams": "https://upload.wikimedia.org/wikipedia/commons/3/30/Alma_Adams_117th_U.S_Congress.jpg",
+    "Don Davis": "https://upload.wikimedia.org/wikipedia/commons/7/7e/RepDonDavis.jpg",
+    "Mayor Vi Lyles": "https://upload.wikimedia.org/wikipedia/commons/2/2a/MayorViLyles.png",
+    "Mayor Karen Bass": "https://upload.wikimedia.org/wikipedia/commons/d/db/Karen_Bass_official_portrait_as_mayor_of_Los_Angeles.jpg"
 }
 
-# 2. Define Google News RSS feeds for each politician
+# Define Google News RSS feeds for each politician
 URLS = {
     "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
     "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
@@ -23,10 +32,7 @@ URLS = {
 }
 
 def get_news(person, keyword="", limit=5):
-    """
-    Fetch the top news articles for the given person from Google News RSS.
-    Uses 'lxml-xml' to avoid bs4.FeatureNotFound. Filters articles by 'keyword' if provided.
-    """
+    """Fetch the top news articles for a given politician and perform sentiment analysis."""
     feed_url = URLS.get(person)
     if not feed_url:
         return []
@@ -38,7 +44,7 @@ def get_news(person, keyword="", limit=5):
         st.warning(f"Error fetching data from {feed_url}: {e}")
         return []
 
-    # Use 'lxml-xml' parser to properly parse RSS feeds
+    # Parse RSS feed with lxml-xml
     soup = BeautifulSoup(response.content, "lxml-xml")
 
     articles = []
@@ -46,83 +52,51 @@ def get_news(person, keyword="", limit=5):
         title = item.title.text if item.title else "No Title"
         pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
 
-        # If keyword is provided, only include articles containing it
+        # Filter by keyword
         if keyword and keyword.lower() not in title.lower():
             continue
 
-        # Use each politician's custom image from Google short link
+        # Sentiment Analysis using TextBlob
+        sentiment_score = TextBlob(title).sentiment.polarity
+        sentiment = "Neutral"
+        if sentiment_score > 0:
+            sentiment = "Positive"
+        elif sentiment_score < 0:
+            sentiment = "Negative"
+
         image_url = POLITICIAN_IMAGES.get(person, "")
 
         articles.append({
             "Title": title,
             "Link": item.link.text if item.link else "",
             "Published": pub_date,
-            "Image": image_url
+            "Image": image_url,
+            "Sentiment": sentiment
         })
     return articles
 
-def save_email(email):
-    """Save an email address to a CSV file for daily newsletter subscriptions."""
-    with open("subscribers.csv", "a", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([email])
-    return True
+def generate_trending_topics(news_articles):
+    """Generate a word cloud for trending political topics."""
+    all_titles = " ".join([article["Title"] for article in news_articles])
+    words = word_tokenize(all_titles)
+    words = [word.lower() for word in words if word.isalnum()]
+    words = [word for word in words if word not in stopwords.words("english")]
+
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(" ".join(words))
+
+    # Display Word Cloud
+    fig, ax = plt.subplots()
+    ax.imshow(wordcloud, interpolation="bilinear")
+    ax.axis("off")
+    st.pyplot(fig)
 
 # Streamlit page config
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for styling
-st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-        }
-        .news-container {
-            padding: 15px;
-            border-radius: 12px;
-            background-color: white;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-        }
-        .news-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-        .news-meta {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 8px;
-        }
-        .news-link {
-            font-size: 16px;
-            color: #2980b9;
-            font-weight: bold;
-            text-decoration: none;
-        }
-        .news-link:hover {
-            text-decoration: underline;
-        }
-        .sidebar-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #34495e;
-            margin-bottom: 10px;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# Radio for switching pages
-page = st.sidebar.radio("Select Page:", ["News", "Videos"])
+# Sidebar Navigation
+page = st.sidebar.radio("Select Page:", ["News", "Videos", "AI Reports"])
 
 if page == "News":
-    # Auto-refresh the News page every 60 seconds, up to 100 times
     st_autorefresh(interval=60000, limit=100, key="news_refresh")
 
     # Sidebar for News Filters
@@ -133,22 +107,8 @@ if page == "News":
     keyword = st.sidebar.text_input("Search for a topic (optional):")
     news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
 
-    # Email Subscription
-    st.sidebar.markdown("## 📩 Subscribe for Daily News")
-    email = st.sidebar.text_input("Enter your email for daily updates")
-    if st.sidebar.button("Subscribe"):
-        if email:
-            save_email(email)
-            st.sidebar.success("✅ Subscribed! You’ll receive daily updates.")
-        else:
-            st.sidebar.warning("⚠️ Please enter a valid email.")
-
     # Main News Page
     st.title("🗳️ NC Political News Tracker - News")
-    st.markdown("""
-    #### Get the latest news on North Carolina politics, featuring:
-    **Alma Adams**, **Don Davis**, **Mayor Vi Lyles**, and **Mayor Karen Bass**.
-    """)
 
     if selected_politicians:
         for person in selected_politicians:
@@ -160,40 +120,34 @@ if page == "News":
                     with col1:
                         st.image(article["Image"], use_container_width=True)
                     with col2:
-                        st.markdown(f"### {article['Title']}")
+                        st.markdown(f"### {article['Title']} ({article['Sentiment']})")
                         st.markdown(f"🕒 {article['Published']}")
-                        if article["Link"]:
-                            st.markdown(f"[🔗 Read More]({article['Link']})")
-                        else:
-                            st.markdown("No link available")
+                        st.markdown(f"[🔗 Read More]({article['Link']})")
             else:
                 st.warning(f"No recent news found for {person}.")
-    else:
-        st.info("Please select at least one politician to see news.")
 
 elif page == "Videos":
     st.title("🎥 Politician Videos")
-    st.markdown("""
-    Learn more about these politicians through curated videos and brief biographies.
-    """)
-
-    # Alma Adams
-    st.markdown("### Alma Adams")
-    st.markdown("Alma Adams is a U.S. Representative for North Carolina's 12th District, focusing on civil rights and education.")
     st.video("https://youtu.be/Ze0jW_ysAJ0?si=uddnUb_QeDiZNEDH")
-
-    # Don Davis
-    st.markdown("### Don Davis")
-    st.markdown("Don Davis is a U.S. Representative for North Carolina's 1st District, emphasizing community issues and development.")
     st.video("https://youtu.be/QFiLuZqyr4E?si=JLetW56-RsxU5dPd")
-
-    # Mayor Vi Lyles
-    st.markdown("### Mayor Vi Lyles")
-    st.markdown("Mayor Vi Lyles leads Charlotte, NC, recognized for her focus on innovation and economic growth.")
     st.video("https://youtu.be/HZv_GhJ8RFI?si=BoM_Wbfnrl1dH7H3")
-
-    # Mayor Karen Bass
-    st.markdown("### Mayor Karen Bass")
-    st.markdown("Mayor Karen Bass serves Los Angeles, focusing on social justice and public service.")
     st.video("https://youtu.be/Oj7BsVWziMA?si=tXvZcwY2qvvC0U-G")
+
+elif page == "AI Reports":
+    st.title("📊 AI-Powered Sentiment & Trending Reports")
+
+    # Fetch all news articles for analysis
+    all_articles = []
+    for person in URLS.keys():
+        all_articles.extend(get_news(person, limit=10))
+
+    if all_articles:
+        st.markdown("### 🏆 Political Sentiment Analysis")
+        sentiment_counts = pd.DataFrame(pd.Series([a["Sentiment"] for a in all_articles]).value_counts(), columns=["Count"])
+        st.bar_chart(sentiment_counts)
+
+        st.markdown("### 🔥 Trending Political Topics")
+        generate_trending_topics(all_articles)
+    else:
+        st.warning("No articles available for analysis.")
 
