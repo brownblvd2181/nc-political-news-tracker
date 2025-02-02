@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import csv
+import time
 
 # Define multiple RSS feeds for each politician
 NEWS_SOURCES = {
@@ -23,11 +24,11 @@ NEWS_SOURCES = {
 DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Default thumbnail
 
 def fetch_rss_news(feed_urls, keyword="", limit=5):
-    """Fetch news articles from multiple RSS feeds."""
+    """Fetch news articles from multiple RSS feeds with improved timeout handling."""
     articles = []
     for url in feed_urls:
         try:
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=10)  # ✅ Increased timeout to 10 sec
             soup = BeautifulSoup(response.content, "xml")
             
             for item in soup.find_all("item")[:limit]:  # Limit articles per feed
@@ -45,7 +46,31 @@ def fetch_rss_news(feed_urls, keyword="", limit=5):
                     "Published": pub_date,
                     "Image": DEFAULT_IMAGE
                 })
-        except Exception as e:
+
+        except requests.exceptions.Timeout:
+            st.warning(f"⚠️ Timeout error fetching data from {url}. Retrying...")
+            time.sleep(2)  # ✅ Retry after a short wait
+            try:
+                response = requests.get(url, timeout=10)  # Second attempt
+                soup = BeautifulSoup(response.content, "xml")
+                for item in soup.find_all("item")[:limit]:  
+                    title = item.title.text
+                    link = item.link.text
+                    pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
+
+                    if keyword and keyword.lower() not in title.lower():
+                        continue
+
+                    articles.append({
+                        "Title": title,
+                        "Link": link,
+                        "Published": pub_date,
+                        "Image": DEFAULT_IMAGE
+                    })
+            except Exception:
+                st.error(f"❌ Failed to retrieve data from {url} after retrying.")
+        
+        except requests.exceptions.RequestException as e:
             st.warning(f"⚠️ Error fetching data from {url}: {e}")
 
     # Sort articles by published date (if available)
@@ -152,3 +177,4 @@ if selected_politicians:
             st.warning(f"No recent news found for {person}.")
 else:
     st.info("Please select at least one politician to see news.")
+
