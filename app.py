@@ -5,9 +5,12 @@ import pandas as pd
 import firebase_admin
 from firebase_admin import credentials, db
 
-# 🔥 Initialize Firebase (Ensure firebase-credentials.json is in the same folder)
-cred = credentials.Certificate("firebase-credentials.json")  
-firebase_admin.initialize_app(cred, {"databaseURL": "https://your-firebase-db.firebaseio.com"})  # Replace with your database URL
+# 🔥 Load Firebase Credentials
+try:
+    cred = credentials.Certificate("firebase-credentials.json")  # Make sure this file is in the project folder
+    firebase_admin.initialize_app(cred, {"databaseURL": "https://your-firebase-db.firebaseio.com"})  # Replace with your actual Firebase URL
+except Exception as e:
+    st.error(f"⚠️ Firebase Initialization Error: {e}")
 
 # 🔎 Define News Sources
 URLS = {
@@ -125,4 +128,3 @@ elif page == "Community Forum":
             st.experimental_rerun()
         else:
             st.warning("⚠️ Please enter your name and comment before submitting.")
-
