@@ -16,9 +16,9 @@ def get_news(person, limit=5):
         return []
     
     response = requests.get(feed_url)
-    
-    # ✅ Fix for BeautifulSoup FeatureNotFound error: Explicitly use "lxml"
-    soup = BeautifulSoup(response.content, "xml", features="lxml")
+
+    # ✅ Corrected BeautifulSoup implementation
+    soup = BeautifulSoup(response.content, "xml")  # No 'features' argument needed
     
     articles = []
     for item in soup.find_all("item")[:limit]:  # Get top 'limit' articles
@@ -30,14 +30,16 @@ def get_news(person, limit=5):
     
     return articles
 
-# Streamlit UI
+# Streamlit UI Configuration
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️")
 
 st.title("🗳️ NC Political News Tracker")
 st.subheader("Get the latest news on Alma Adams & Don Davis")
 
 # Multi-select widget to choose politicians
-selected_politicians = st.multiselect("Select Politician(s)", list(URLS.keys()), default=list(URLS.keys()))
+selected_politicians = st.multiselect(
+    "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
+)
 
 # Fetch and display news
 if selected_politicians:
