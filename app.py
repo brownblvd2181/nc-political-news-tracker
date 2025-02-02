@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-from streamlit_autorefresh import st_autorefresh  # Auto-refresh for News page
+from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
 
 # Define Google News RSS feeds for each politician
 URLS = {
@@ -19,7 +19,7 @@ DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Def
 def get_news(person, keyword="", limit=5):
     """
     Fetch the top news articles for the given person from Google News RSS.
-    Uses 'lxml-xml' to avoid FeatureNotFound. Filters articles by 'keyword' if provided.
+    Uses 'lxml-xml' to avoid bs4.FeatureNotFound. Filters articles by 'keyword' if provided.
     """
     feed_url = URLS.get(person)
     if not feed_url:
@@ -171,21 +171,19 @@ elif page == "Videos":
     # Alma Adams
     st.markdown("### Alma Adams")
     st.markdown("Alma Adams is a U.S. Representative for North Carolina's 12th District, focusing on civil rights and education.")
-    st.video("https://www.youtube.com/watch?v=jVroqC_OGmo")  # Sample embed link
+    st.video("https://youtu.be/Ze0jW_ysAJ0?si=uddnUb_QeDiZNEDH")  # Alma Adams video
 
     # Don Davis
     st.markdown("### Don Davis")
     st.markdown("Don Davis is a U.S. Representative for North Carolina's 1st District, emphasizing community issues and development.")
-    st.video("https://www.youtube.com/watch?v=MJBvd1TPbg4")  # Sample embed link
+    st.video("https://youtu.be/QFiLuZqyr4E?si=JLetW56-RsxU5dPd")  # Don Davis video
 
     # Mayor Vi Lyles
     st.markdown("### Mayor Vi Lyles")
     st.markdown("Mayor Vi Lyles leads Charlotte, NC, recognized for her focus on innovation and economic growth.")
-    st.video("https://www.youtube.com/watch?v=vSYfYzh4rZ8")  # Sample embed link
+    st.video("https://youtu.be/HZv_GhJ8RFI?si=BoM_Wbfnrl1dH7H3")  # Vi Lyles video
 
     # Mayor Karen Bass
     st.markdown("### Mayor Karen Bass")
     st.markdown("Mayor Karen Bass serves Los Angeles, focusing on social justice and public service.")
-    st.video("https://www.youtube.com/watch?v=WcOvTx1d05M")  # Sample embed link
-
-
+    st.video("https://youtu.be/Oj7BsVWziMA?si=tXvZcwY2qvvC0U-G")  # Karen Bass video
