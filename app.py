@@ -4,22 +4,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-import nltk
-import os
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from textblob import TextBlob
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
-
-# Force Download NLTK 'punkt' if missing (prevents LookupError)
-nltk_data_path = os.path.expanduser("~/nltk_data")
-if not os.path.exists(nltk_data_path):
-    os.makedirs(nltk_data_path)
-nltk.data.path.append(nltk_data_path)
-nltk.download("punkt", download_dir=nltk_data_path)
-nltk.download("stopwords", download_dir=nltk_data_path)
 
 # Define Politician Images
 POLITICIAN_IMAGES = {
@@ -38,7 +23,7 @@ URLS = {
 }
 
 def get_news(person, keyword="", limit=5):
-    """Fetch news and perform sentiment analysis."""
+    """Fetch news articles for the given politician."""
     feed_url = URLS.get(person)
     if not feed_url:
         return []
@@ -62,48 +47,21 @@ def get_news(person, keyword="", limit=5):
         if keyword and keyword.lower() not in title.lower():
             continue
 
-        # Sentiment Analysis using TextBlob
-        sentiment_score = TextBlob(title).sentiment.polarity
-        sentiment = "Neutral"
-        if sentiment_score > 0:
-            sentiment = "Positive"
-        elif sentiment_score < 0:
-            sentiment = "Negative"
-
         image_url = POLITICIAN_IMAGES.get(person, "")
 
         articles.append({
             "Title": title,
             "Link": item.link.text if item.link else "",
             "Published": pub_date,
-            "Image": image_url,
-            "Sentiment": sentiment
+            "Image": image_url
         })
     return articles
-
-def generate_trending_topics(news_articles):
-    """Generate a word cloud for trending political topics."""
-    nltk.download("punkt", download_dir=nltk_data_path)  # Ensure 'punkt' is available
-    nltk.download("stopwords", download_dir=nltk_data_path)
-
-    all_titles = " ".join([article["Title"] for article in news_articles])
-    words = word_tokenize(all_titles)
-    words = [word.lower() for word in words if word.isalnum()]
-    words = [word for word in words if word not in stopwords.words("english")]
-
-    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(" ".join(words))
-
-    # Display Word Cloud
-    fig, ax = plt.subplots()
-    ax.imshow(wordcloud, interpolation="bilinear")
-    ax.axis("off")
-    st.pyplot(fig)
 
 # Streamlit page config
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
 # Sidebar Navigation
-page = st.sidebar.radio("Select Page:", ["News", "Videos", "AI Reports"])
+page = st.sidebar.radio("Select Page:", ["News", "Videos", "Community Forum"])
 
 if page == "News":
     st_autorefresh(interval=60000, limit=100, key="news_refresh")
@@ -129,7 +87,7 @@ if page == "News":
                     with col1:
                         st.image(article["Image"], use_container_width=True)
                     with col2:
-                        st.markdown(f"### {article['Title']} ({article['Sentiment']})")
+                        st.markdown(f"### {article['Title']}")
                         st.markdown(f"🕒 {article['Published']}")
                         st.markdown(f"[🔗 Read More]({article['Link']})")
             else:
@@ -142,22 +100,33 @@ elif page == "Videos":
     st.video("https://youtu.be/HZv_GhJ8RFI?si=BoM_Wbfnrl1dH7H3")
     st.video("https://youtu.be/Oj7BsVWziMA?si=tXvZcwY2qvvC0U-G")
 
-elif page == "AI Reports":
-    st.title("📊 AI-Powered Sentiment & Trending Reports")
+elif page == "Community Forum":
+    st.title("💬 NC Political Community Forum")
+    st.markdown("""
+        Discuss political topics, share opinions, and engage with others in the community.  
+        Leave comments, reply to discussions, and be part of the conversation!
+    """)
 
-    # Fetch all news articles for analysis
-    all_articles = []
-    for person in URLS.keys():
-        all_articles.extend(get_news(person, limit=10))
+    # Embed Giscus (GitHub Discussions)
+    giscus_code = """
+    <script src="https://giscus.app/client.js"
+        data-repo="your-github-username/your-repo"
+        data-repo-id="YOUR_REPO_ID"
+        data-category="Announcements"
+        data-category-id="YOUR_CATEGORY_ID"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="bottom"
+        data-theme="light"
+        data-lang="en"
+        crossorigin="anonymous"
+        async>
+    </script>
+    <noscript>Please enable JavaScript to view the comments.</noscript>
+    """
 
-    if all_articles:
-        st.markdown("### 🏆 Political Sentiment Analysis")
-        sentiment_counts = pd.DataFrame(pd.Series([a["Sentiment"] for a in all_articles]).value_counts(), columns=["Count"])
-        st.bar_chart(sentiment_counts)
-
-        st.markdown("### 🔥 Trending Political Topics")
-        generate_trending_topics(all_articles)
-    else:
-        st.warning("No articles available for analysis.")
+    st.markdown(giscus_code, unsafe_allow_html=True)
 
 
