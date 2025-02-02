@@ -3,96 +3,63 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import csv
-import time
 
-# Define multiple RSS feeds for each politician
-NEWS_SOURCES = {
-    "Alma Adams": [
-        "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
-        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
-        "https://www.politico.com/rss/politics.xml",  # Politico added
-        "https://www.charlotteobserver.com/news/politics-government/?widgetName=rssfeed&widgetContentId=71255950"
-    ],
-    "Don Davis": [
-        "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
-        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
-        "https://www.politico.com/rss/politics.xml",  # Politico added
-        "https://www.wral.com/politics/?rss=1"
-    ]
+# Define a single RSS feed (Google News) for each politician
+URLS = {
+    "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
+    "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
+    "Mayor Vi Lyles": "https://news.google.com/rss/search?q=Mayor+Vi+Lyles+Charlotte",
+    "Mayor Karen Bass": "https://news.google.com/rss/search?q=Mayor+Karen+Bass"
 }
 
 DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Default thumbnail
 
-def fetch_rss_news(feed_urls, keyword="", limit=5):
-    """Fetch news articles from multiple RSS feeds with improved timeout handling."""
+def get_news(person, keyword="", limit=5):
+    """
+    Fetch the top news articles for the given person from the Google News RSS feed.
+    Optionally filter articles by a keyword.
+    """
+    feed_url = URLS.get(person)
+    if not feed_url:
+        return []
+    
+    try:
+        response = requests.get(feed_url, timeout=10)
+    except Exception as e:
+        st.warning(f"Error fetching data from {feed_url}: {e}")
+        return []
+    
+    soup = BeautifulSoup(response.content, "xml")
     articles = []
-    for url in feed_urls:
-        try:
-            response = requests.get(url, timeout=10)  # ✅ Increased timeout to 10 sec
-            soup = BeautifulSoup(response.content, "xml")
-            
-            for item in soup.find_all("item")[:limit]:  # Limit articles per feed
-                title = item.title.text
-                link = item.link.text
-                pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
-
-                # Apply keyword filter
-                if keyword and keyword.lower() not in title.lower():
-                    continue
-
-                articles.append({
-                    "Title": title,
-                    "Link": link,
-                    "Published": pub_date,
-                    "Image": DEFAULT_IMAGE
-                })
-
-        except requests.exceptions.Timeout:
-            st.warning(f"⚠️ Timeout error fetching data from {url}. Retrying...")
-            time.sleep(2)  # ✅ Retry after a short wait
-            try:
-                response = requests.get(url, timeout=10)  # Second attempt
-                soup = BeautifulSoup(response.content, "xml")
-                for item in soup.find_all("item")[:limit]:  
-                    title = item.title.text
-                    link = item.link.text
-                    pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
-
-                    if keyword and keyword.lower() not in title.lower():
-                        continue
-
-                    articles.append({
-                        "Title": title,
-                        "Link": link,
-                        "Published": pub_date,
-                        "Image": DEFAULT_IMAGE
-                    })
-            except Exception:
-                st.error(f"❌ Failed to retrieve data from {url} after retrying.")
+    for item in soup.find_all("item")[:limit]:
+        title = item.title.text
         
-        except requests.exceptions.RequestException as e:
-            st.warning(f"⚠️ Error fetching data from {url}: {e}")
-
-    # Sort articles by published date (if available)
-    articles = sorted(articles, key=lambda x: x["Published"], reverse=True)[:limit]
+        # Apply keyword filter if a keyword is provided
+        if keyword and keyword.lower() not in title.lower():
+            continue
+        
+        articles.append({
+            "Title": title,
+            "Link": item.link.text,
+            "Published": item.pubDate.text if item.pubDate else "Unknown Date",
+            "Image": DEFAULT_IMAGE
+        })
     return articles
 
-# Function to save emails
 def save_email(email):
-    """Save email to CSV for future newsletters."""
+    """Save an email address to a CSV file for daily newsletter subscriptions."""
     with open("subscribers.csv", "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([email])
     return True
 
-# Streamlit UI Configuration
+# Streamlit UI configuration
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for better styling and readability
+# Custom CSS for styling and improved readability
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
-        
         body { 
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
@@ -135,15 +102,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar Navigation
+# Sidebar Navigation and Email Subscription
 st.sidebar.markdown("## 🔍 Filter News")
 selected_politicians = st.sidebar.multiselect(
-    "Select Politician(s)", list(NEWS_SOURCES.keys()), default=list(NEWS_SOURCES.keys())
+    "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
 )
 keyword = st.sidebar.text_input("Search for a topic (optional):")
 news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
 
-# Email Subscription Section
 st.sidebar.markdown("## 📩 Subscribe for Daily News")
 email = st.sidebar.text_input("Enter your email for daily updates")
 if st.sidebar.button("Subscribe"):
@@ -153,20 +119,21 @@ if st.sidebar.button("Subscribe"):
     else:
         st.sidebar.warning("⚠️ Please enter a valid email.")
 
-# Main Page Title
+# Main Page Title and Description
 st.title("🗳️ NC Political News Tracker")
-st.markdown("#### Get the latest news on North Carolina politics, featuring **Alma Adams** and **Don Davis**.")
+st.markdown("""
+#### Get the latest news on North Carolina politics, featuring:
+**Alma Adams**, **Don Davis**, **Mayor Vi Lyles**, and **Mayor Karen Bass**.
+""")
 
-# Display News in Sections
+# Display news articles for each selected politician
 if selected_politicians:
     for person in selected_politicians:
-        news_articles = fetch_rss_news(NEWS_SOURCES[person], keyword=keyword, limit=news_limit)
-        
+        news_articles = get_news(person, keyword=keyword, limit=news_limit)
         if news_articles:
             st.markdown(f"## 📰 Latest News on {person}")
-            
             for article in news_articles:
-                col1, col2 = st.columns([1, 3])  # Image on left, text on right
+                col1, col2 = st.columns([1, 3])  # Left column for image, right for text
                 with col1:
                     st.image(article["Image"], use_container_width=True)
                 with col2:
@@ -177,4 +144,3 @@ if selected_politicians:
             st.warning(f"No recent news found for {person}.")
 else:
     st.info("Please select at least one politician to see news.")
-
