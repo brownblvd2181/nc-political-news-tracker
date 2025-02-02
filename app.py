@@ -16,7 +16,9 @@ def get_news(person, limit=5):
         return []
     
     response = requests.get(feed_url)
-    soup = BeautifulSoup(response.content, "xml")
+    
+    # ✅ Fix for BeautifulSoup FeatureNotFound error: Explicitly use "lxml"
+    soup = BeautifulSoup(response.content, "xml", features="lxml")
     
     articles = []
     for item in soup.find_all("item")[:limit]:  # Get top 'limit' articles
