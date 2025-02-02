@@ -12,10 +12,11 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
 
+# Ensure NLTK data is downloaded properly
 nltk.download("punkt")
 nltk.download("stopwords")
 
-# Define Politician Images (Direct Links Preferred Over Google Short URLs)
+# Define Politician Images
 POLITICIAN_IMAGES = {
     "Alma Adams": "https://upload.wikimedia.org/wikipedia/commons/3/30/Alma_Adams_117th_U.S_Congress.jpg",
     "Don Davis": "https://upload.wikimedia.org/wikipedia/commons/7/7e/RepDonDavis.jpg",
@@ -23,7 +24,7 @@ POLITICIAN_IMAGES = {
     "Mayor Karen Bass": "https://upload.wikimedia.org/wikipedia/commons/d/db/Karen_Bass_official_portrait_as_mayor_of_Los_Angeles.jpg"
 }
 
-# Define Google News RSS feeds for each politician
+# Define Google News RSS feeds
 URLS = {
     "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
     "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
@@ -32,7 +33,7 @@ URLS = {
 }
 
 def get_news(person, keyword="", limit=5):
-    """Fetch the top news articles for a given politician and perform sentiment analysis."""
+    """Fetch news and perform sentiment analysis."""
     feed_url = URLS.get(person)
     if not feed_url:
         return []
@@ -77,6 +78,9 @@ def get_news(person, keyword="", limit=5):
 
 def generate_trending_topics(news_articles):
     """Generate a word cloud for trending political topics."""
+    nltk.download("punkt")  # Ensure punkt is available in cloud environments
+    nltk.download("stopwords")
+
     all_titles = " ".join([article["Title"] for article in news_articles])
     words = word_tokenize(all_titles)
     words = [word.lower() for word in words if word.isalnum()]
@@ -150,4 +154,5 @@ elif page == "AI Reports":
         generate_trending_topics(all_articles)
     else:
         st.warning("No articles available for analysis.")
+
 
