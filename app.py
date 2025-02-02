@@ -4,14 +4,14 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-from streamlit_autorefresh import st_autorefresh  # Auto-refresh on the News page
+from streamlit_autorefresh import st_autorefresh  # Auto-refresh for the News page
 
-# 1. Define official images for each politician
+# 1. Define the Google Image short links for each politician
 POLITICIAN_IMAGES = {
-    "Alma Adams": "https://upload.wikimedia.org/wikipedia/commons/3/30/Alma_Adams_117th_U.S_Congress.jpg",
-    "Don Davis": "https://upload.wikimedia.org/wikipedia/commons/7/7e/RepDonDavis.jpg",
-    "Mayor Vi Lyles": "https://upload.wikimedia.org/wikipedia/commons/2/2a/MayorViLyles.png",
-    "Mayor Karen Bass": "https://upload.wikimedia.org/wikipedia/commons/d/db/Karen_Bass_official_portrait_as_mayor_of_Los_Angeles.jpg"
+    "Alma Adams": "https://images.app.goo.gl/5N76cg754HXF2fVm7",
+    "Don Davis": "https://images.app.goo.gl/zvGnUNafNj68ctJQ6",
+    "Mayor Vi Lyles": "https://images.app.goo.gl/WsX69rpD4Z8aW9pp9",
+    "Mayor Karen Bass": "https://images.app.goo.gl/hdAL5rTjrrqEE9126"
 }
 
 # 2. Define Google News RSS feeds for each politician
@@ -46,12 +46,12 @@ def get_news(person, keyword="", limit=5):
         title = item.title.text if item.title else "No Title"
         pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
 
-        # If a keyword is provided, only include articles containing it
+        # If keyword is provided, only include articles containing it
         if keyword and keyword.lower() not in title.lower():
             continue
 
-        # 3. Use each politician's specific photo instead of a placeholder
-        image_url = POLITICIAN_IMAGES.get(person)  # Guaranteed from our dictionary
+        # Use each politician's custom image from Google short link
+        image_url = POLITICIAN_IMAGES.get(person, "")
 
         articles.append({
             "Title": title,
@@ -68,7 +68,7 @@ def save_email(email):
         writer.writerow([email])
     return True
 
-# Streamlit Page Config
+# Streamlit page config
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
 # Custom CSS for styling
@@ -118,7 +118,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Page Selection: News or Videos
+# Radio for switching pages
 page = st.sidebar.radio("Select Page:", ["News", "Videos"])
 
 if page == "News":
@@ -180,19 +180,20 @@ elif page == "Videos":
     # Alma Adams
     st.markdown("### Alma Adams")
     st.markdown("Alma Adams is a U.S. Representative for North Carolina's 12th District, focusing on civil rights and education.")
-    st.video("https://youtu.be/Ze0jW_ysAJ0?si=uddnUb_QeDiZNEDH")  # Alma Adams video
+    st.video("https://youtu.be/Ze0jW_ysAJ0?si=uddnUb_QeDiZNEDH")
 
     # Don Davis
     st.markdown("### Don Davis")
     st.markdown("Don Davis is a U.S. Representative for North Carolina's 1st District, emphasizing community issues and development.")
-    st.video("https://youtu.be/QFiLuZqyr4E?si=JLetW56-RsxU5dPd")  # Don Davis video
+    st.video("https://youtu.be/QFiLuZqyr4E?si=JLetW56-RsxU5dPd")
 
     # Mayor Vi Lyles
     st.markdown("### Mayor Vi Lyles")
     st.markdown("Mayor Vi Lyles leads Charlotte, NC, recognized for her focus on innovation and economic growth.")
-    st.video("https://youtu.be/HZv_GhJ8RFI?si=BoM_Wbfnrl1dH7H3")  # Vi Lyles video
+    st.video("https://youtu.be/HZv_GhJ8RFI?si=BoM_Wbfnrl1dH7H3")
 
     # Mayor Karen Bass
     st.markdown("### Mayor Karen Bass")
     st.markdown("Mayor Karen Bass serves Los Angeles, focusing on social justice and public service.")
-    st.video("https://youtu.be/Oj7BsVWziMA?si=tXvZcwY2qvvC0U-G")  # Karen Bass video
+    st.video("https://youtu.be/Oj7BsVWziMA?si=tXvZcwY2qvvC0U-G")
+
