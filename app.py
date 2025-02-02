@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-from streamlit_autorefresh import st_autorefresh  # Auto-refresh for News page
+from streamlit_autorefresh import st_autorefresh  # For auto-refresh on the News page
 
 # Define single-source Google News RSS for each politician
 URLS = {
@@ -19,7 +19,7 @@ DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Def
 def get_news(person, keyword="", limit=5):
     """
     Fetch the top news articles for the given person from Google News (RSS).
-    Optionally filter articles by a keyword. Uses lxml-xml to avoid FeatureNotFound errors.
+    Uses 'lxml-xml' to avoid bs4.FeatureNotFound.
     """
     feed_url = URLS.get(person)
     if not feed_url:
@@ -32,7 +32,6 @@ def get_news(person, keyword="", limit=5):
         st.warning(f"Error fetching data from {feed_url}: {e}")
         return []
 
-    # ✅ Use lxml-xml parser to avoid bs4.FeatureNotFound
     soup = BeautifulSoup(response.content, "lxml-xml")
 
     articles = []
@@ -40,7 +39,6 @@ def get_news(person, keyword="", limit=5):
         title = item.title.text if item.title else "No Title"
         pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
 
-        # Apply keyword filter if needed
         if keyword and keyword.lower() not in title.lower():
             continue
 
@@ -108,14 +106,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Allow user to switch between News and Videos pages
+# Page selection: News or Videos
 page = st.sidebar.radio("Select Page:", ["News", "Videos"])
 
 if page == "News":
-    # Auto-refresh: refresh every 60 seconds (60000 ms), up to 100 times
+    # Auto-refresh the News page every 60 seconds (up to 100 times)
     st_autorefresh(interval=60000, limit=100, key="news_refresh")
 
-    # Sidebar for News filters
+    # Sidebar for News
     st.sidebar.markdown("## 🔍 Filter News")
     selected_politicians = st.sidebar.multiselect(
         "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
@@ -145,7 +143,7 @@ if page == "News":
             if news_articles:
                 st.markdown(f"## 📰 Latest News on {person}")
                 for article in news_articles:
-                    col1, col2 = st.columns([1, 3])  # Two-column layout
+                    col1, col2 = st.columns([1, 3])
                     with col1:
                         st.image(article["Image"], use_container_width=True)
                     with col2:
@@ -164,26 +162,27 @@ elif page == "Videos":
     st.title("🎥 Politician Videos")
     st.markdown("""
     Learn more about the featured politicians through curated videos and brief biographies.
-    Replace these example YouTube links with actual relevant interviews or news clips.
+    Replace these example YouTube links with actual relevant interviews or speeches.
     """)
 
     # Alma Adams
     st.markdown("### Alma Adams")
-    st.markdown("Alma Adams is a U.S. Representative for North Carolina, known for her advocacy for civil rights.")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")  # Example video URL
+    st.markdown("Alma Adams is a U.S. Representative for North Carolina's 12th District, focusing on civil rights and education.")
+    st.video("https://www.youtube.com/watch?v=jVroqC_OGmo")  # Example relevant link
 
     # Don Davis
     st.markdown("### Don Davis")
-    st.markdown("Don Davis is a prominent political figure in North Carolina, focusing on local issues.")
-    st.video("https://www.youtube.com/watch?v=FY2y_i-ozvA")  # Example video URL
+    st.markdown("Don Davis is a U.S. Representative for North Carolina's 1st District, emphasizing community issues and development.")
+    st.video("https://www.youtube.com/watch?v=MJBvd1TPbg4")  # Example relevant link
 
     # Mayor Vi Lyles
     st.markdown("### Mayor Vi Lyles")
-    st.markdown("Mayor Vi Lyles is the Mayor of Charlotte, NC, known for driving innovation and economic growth in the city.")
-    st.video("https://www.youtube.com/watch?v=U2S7zQQBhso")  # Example video URL
+    st.markdown("Mayor Vi Lyles leads Charlotte, NC, known for driving innovation and economic growth in the city.")
+    st.video("https://www.youtube.com/watch?v=vSYfYzh4rZ8")  # Example relevant link
 
     # Mayor Karen Bass
     st.markdown("### Mayor Karen Bass")
-    st.markdown("Mayor Karen Bass is the Mayor of Los Angeles, known for her work on social justice and community development.")
-    st.video("https://www.youtube.com/watch?v=jkl012")  # Example placeholder URL
+    st.markdown("Mayor Karen Bass serves Los Angeles, focusing on social justice and public service.")
+    st.video("https://www.youtube.com/watch?v=WcOvTx1d05M")  # Example relevant link
+
 
