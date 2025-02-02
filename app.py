@@ -4,39 +4,52 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 
-# Define Google News RSS feeds for each politician
-URLS = {
-    "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
-    "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina"
+# Define multiple RSS feeds for each politician
+NEWS_SOURCES = {
+    "Alma Adams": [
+        "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+        "https://www.politico.com/rss/politics.xml",  # Politico added
+        "https://www.charlotteobserver.com/news/politics-government/?widgetName=rssfeed&widgetContentId=71255950"
+    ],
+    "Don Davis": [
+        "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+        "https://www.politico.com/rss/politics.xml",  # Politico added
+        "https://www.wral.com/politics/?rss=1"
+    ]
 }
 
 DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Default thumbnail
 
-def get_news(person, keyword="", limit=5):
-    """Fetch the top news articles for the given person from Google News RSS, with optional keyword filtering."""
-    feed_url = URLS.get(person)
-    if not feed_url:
-        return []
-    
-    response = requests.get(feed_url)
-    soup = BeautifulSoup(response.content, "xml")
-
+def fetch_rss_news(feed_urls, keyword="", limit=5):
+    """Fetch news articles from multiple RSS feeds."""
     articles = []
-    for item in soup.find_all("item")[:limit]:
-        title = item.title.text
-        link = item.link.text
-        
-        # Apply keyword filter if provided
-        if keyword and keyword.lower() not in title.lower():
-            continue
+    for url in feed_urls:
+        try:
+            response = requests.get(url, timeout=5)
+            soup = BeautifulSoup(response.content, "xml")
+            
+            for item in soup.find_all("item")[:limit]:  # Limit articles per feed
+                title = item.title.text
+                link = item.link.text
+                pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
 
-        articles.append({
-            "Title": title,
-            "Link": link,
-            "Published": item.pubDate.text,
-            "Image": DEFAULT_IMAGE  # Assign default image
-        })
-    
+                # Apply keyword filter
+                if keyword and keyword.lower() not in title.lower():
+                    continue
+
+                articles.append({
+                    "Title": title,
+                    "Link": link,
+                    "Published": pub_date,
+                    "Image": DEFAULT_IMAGE
+                })
+        except Exception as e:
+            st.warning(f"⚠️ Error fetching data from {url}: {e}")
+
+    # Sort articles by published date (if available)
+    articles = sorted(articles, key=lambda x: x["Published"], reverse=True)[:limit]
     return articles
 
 # Function to save emails
@@ -68,12 +81,6 @@ st.markdown("""
             display: flex;
             align-items: center;
         }
-        .news-image {
-            width: 120px;
-            height: 120px;
-            border-radius: 8px;
-            margin-right: 15px;
-        }
         .news-title {
             font-size: 18px;
             font-weight: bold;
@@ -100,26 +107,19 @@ st.markdown("""
             color: #34495e;
             margin-bottom: 10px;
         }
-        .email-box {
-            padding: 15px;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
 # Sidebar Navigation
-st.sidebar.markdown('<p class="sidebar-title">🔍 Filter News</p>', unsafe_allow_html=True)
+st.sidebar.markdown("## 🔍 Filter News")
 selected_politicians = st.sidebar.multiselect(
-    "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
+    "Select Politician(s)", list(NEWS_SOURCES.keys()), default=list(NEWS_SOURCES.keys())
 )
 keyword = st.sidebar.text_input("Search for a topic (optional):")
 news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
 
 # Email Subscription Section
-st.sidebar.markdown('<p class="sidebar-title">📩 Subscribe for Daily News</p>', unsafe_allow_html=True)
+st.sidebar.markdown("## 📩 Subscribe for Daily News")
 email = st.sidebar.text_input("Enter your email for daily updates")
 if st.sidebar.button("Subscribe"):
     if email:
@@ -135,21 +135,19 @@ st.markdown("#### Get the latest news on North Carolina politics, featuring **Al
 # Display News in Sections
 if selected_politicians:
     for person in selected_politicians:
-        news_articles = get_news(person, keyword=keyword, limit=news_limit)
+        news_articles = fetch_rss_news(NEWS_SOURCES[person], keyword=keyword, limit=news_limit)
         
         if news_articles:
             st.markdown(f"## 📰 Latest News on {person}")
             
             for article in news_articles:
-                st.markdown('<div class="news-container">', unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 3])  # Image on left, text on right
                 with col1:
-                    st.image(article["Image"], use_container_width=True)  # ✅ Fixed Deprecation Warning
+                    st.image(article["Image"], use_container_width=True)
                 with col2:
-                    st.markdown(f'<p class="news-title">{article["Title"]}</p>', unsafe_allow_html=True)
-                    st.markdown(f'<p class="news-meta">Published: {article["Published"]}</p>', unsafe_allow_html=True)
-                    st.markdown(f'<a class="news-link" href="{article["Link"]}" target="_blank">Read More</a>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown(f"### {article['Title']}")
+                    st.markdown(f"🕒 {article['Published']}")
+                    st.markdown(f"[🔗 Read More]({article['Link']})")
         else:
             st.warning(f"No recent news found for {person}.")
 else:
