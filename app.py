@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import csv
 import time
-from streamlit_autorefresh import st_autorefresh  # For auto-refresh on the News page
+from streamlit_autorefresh import st_autorefresh  # Auto-refresh for News page
 
-# Define a single RSS feed (Google News) for each politician
+# Define single-source Google News RSS for each politician
 URLS = {
     "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
     "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina",
@@ -18,8 +18,8 @@ DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Def
 
 def get_news(person, keyword="", limit=5):
     """
-    Fetch the top news articles for the given person from the Google News RSS feed.
-    Optionally filter articles by a keyword.
+    Fetch the top news articles for the given person from Google News (RSS).
+    Optionally filter articles by a keyword. Uses lxml-xml to avoid FeatureNotFound errors.
     """
     feed_url = URLS.get(person)
     if not feed_url:
@@ -27,20 +27,27 @@ def get_news(person, keyword="", limit=5):
     
     try:
         response = requests.get(feed_url, timeout=10)
+        response.raise_for_status()
     except Exception as e:
         st.warning(f"Error fetching data from {feed_url}: {e}")
         return []
-    
-    soup = BeautifulSoup(response.content, "xml")
+
+    # ✅ Use lxml-xml parser to avoid bs4.FeatureNotFound
+    soup = BeautifulSoup(response.content, "lxml-xml")
+
     articles = []
     for item in soup.find_all("item")[:limit]:
-        title = item.title.text
+        title = item.title.text if item.title else "No Title"
+        pub_date = item.pubDate.text if item.pubDate else "Unknown Date"
+
+        # Apply keyword filter if needed
         if keyword and keyword.lower() not in title.lower():
             continue
+
         articles.append({
             "Title": title,
-            "Link": item.link.text,
-            "Published": item.pubDate.text if item.pubDate else "Unknown Date",
+            "Link": item.link.text if item.link else "",
+            "Published": pub_date,
             "Image": DEFAULT_IMAGE
         })
     return articles
@@ -52,10 +59,10 @@ def save_email(email):
         writer.writerow([email])
     return True
 
-# Configure the Streamlit page
+# Streamlit page config
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for styling and readability
+# Custom CSS for styling
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
@@ -101,21 +108,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Page Selection: News or Videos
+# Allow user to switch between News and Videos pages
 page = st.sidebar.radio("Select Page:", ["News", "Videos"])
 
 if page == "News":
-    # Auto-refresh the News page every 60 seconds
+    # Auto-refresh: refresh every 60 seconds (60000 ms), up to 100 times
     st_autorefresh(interval=60000, limit=100, key="news_refresh")
-    
-    # Sidebar components for the News page
+
+    # Sidebar for News filters
     st.sidebar.markdown("## 🔍 Filter News")
     selected_politicians = st.sidebar.multiselect(
         "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
     )
     keyword = st.sidebar.text_input("Search for a topic (optional):")
     news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
-    
+
     st.sidebar.markdown("## 📩 Subscribe for Daily News")
     email = st.sidebar.text_input("Enter your email for daily updates")
     if st.sidebar.button("Subscribe"):
@@ -124,53 +131,59 @@ if page == "News":
             st.sidebar.success("✅ Subscribed! You’ll receive daily updates.")
         else:
             st.sidebar.warning("⚠️ Please enter a valid email.")
-    
-    # Main News Page Content
+
+    # Main News Page
     st.title("🗳️ NC Political News Tracker - News")
     st.markdown("""
     #### Get the latest news on North Carolina politics, featuring:
     **Alma Adams**, **Don Davis**, **Mayor Vi Lyles**, and **Mayor Karen Bass**.
     """)
-    
+
     if selected_politicians:
         for person in selected_politicians:
             news_articles = get_news(person, keyword=keyword, limit=news_limit)
             if news_articles:
                 st.markdown(f"## 📰 Latest News on {person}")
                 for article in news_articles:
-                    col1, col2 = st.columns([1, 3])
+                    col1, col2 = st.columns([1, 3])  # Two-column layout
                     with col1:
                         st.image(article["Image"], use_container_width=True)
                     with col2:
                         st.markdown(f"### {article['Title']}")
                         st.markdown(f"🕒 {article['Published']}")
-                        st.markdown(f"[🔗 Read More]({article['Link']})")
+                        if article["Link"]:
+                            st.markdown(f"[🔗 Read More]({article['Link']})")
+                        else:
+                            st.markdown("No link available")
             else:
                 st.warning(f"No recent news found for {person}.")
     else:
         st.info("Please select at least one politician to see news.")
 
 elif page == "Videos":
-    # Videos Page Content
     st.title("🎥 Politician Videos")
-    st.markdown("Learn more about the featured politicians through curated videos and brief biographies.")
-    
+    st.markdown("""
+    Learn more about the featured politicians through curated videos and brief biographies.
+    Replace these example YouTube links with actual relevant interviews or news clips.
+    """)
+
     # Alma Adams
     st.markdown("### Alma Adams")
-    st.markdown("Alma Adams is a U.S. Representative for North Carolina, known for her advocacy for civil rights and community empowerment.")
-    st.video("https://www.youtube.com/watch?v=abc123")  # Replace with a relevant video URL
-    
+    st.markdown("Alma Adams is a U.S. Representative for North Carolina, known for her advocacy for civil rights.")
+    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")  # Example video URL
+
     # Don Davis
     st.markdown("### Don Davis")
-    st.markdown("Don Davis is a prominent political figure in North Carolina, focusing on local issues and community development.")
-    st.video("https://www.youtube.com/watch?v=def456")  # Replace with a relevant video URL
-    
+    st.markdown("Don Davis is a prominent political figure in North Carolina, focusing on local issues.")
+    st.video("https://www.youtube.com/watch?v=FY2y_i-ozvA")  # Example video URL
+
     # Mayor Vi Lyles
     st.markdown("### Mayor Vi Lyles")
-    st.markdown("Mayor Vi Lyles is the Mayor of Charlotte, North Carolina, dedicated to driving innovation and growth in the city.")
-    st.video("https://www.youtube.com/watch?v=ghi789")  # Replace with a relevant video URL
-    
+    st.markdown("Mayor Vi Lyles is the Mayor of Charlotte, NC, known for driving innovation and economic growth in the city.")
+    st.video("https://www.youtube.com/watch?v=U2S7zQQBhso")  # Example video URL
+
     # Mayor Karen Bass
     st.markdown("### Mayor Karen Bass")
-    st.markdown("Mayor Karen Bass is the Mayor of Los Angeles, known for her commitment to social justice and public service.")
-    st.video("https://www.youtube.com/watch?v=jkl012")  # Replace with a relevant video URL
+    st.markdown("Mayor Karen Bass is the Mayor of Los Angeles, known for her work on social justice and community development.")
+    st.video("https://www.youtube.com/watch?v=jkl012")  # Example placeholder URL
+
