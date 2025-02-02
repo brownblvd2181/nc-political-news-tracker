@@ -5,7 +5,7 @@ import pandas as pd
 import firebase_admin
 from firebase_admin import credentials, db
 
-# 🔥 Initialize Firebase (Make sure firebase-credentials.json is in the same folder)
+# 🔥 Initialize Firebase (Ensure firebase-credentials.json is in the same folder)
 cred = credentials.Certificate("firebase-credentials.json")  
 firebase_admin.initialize_app(cred, {"databaseURL": "https://your-firebase-db.firebaseio.com"})  # Replace with your database URL
 
@@ -125,5 +125,4 @@ elif page == "Community Forum":
             st.experimental_rerun()
         else:
             st.warning("⚠️ Please enter your name and comment before submitting.")
-
 
