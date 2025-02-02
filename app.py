@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import csv
+import time
+from streamlit_autorefresh import st_autorefresh  # For auto-refresh on the News page
 
 # Define a single RSS feed (Google News) for each politician
 URLS = {
@@ -33,11 +35,8 @@ def get_news(person, keyword="", limit=5):
     articles = []
     for item in soup.find_all("item")[:limit]:
         title = item.title.text
-        
-        # Apply keyword filter if a keyword is provided
         if keyword and keyword.lower() not in title.lower():
             continue
-        
         articles.append({
             "Title": title,
             "Link": item.link.text,
@@ -53,10 +52,10 @@ def save_email(email):
         writer.writerow([email])
     return True
 
-# Streamlit UI configuration
+# Configure the Streamlit page
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
 
-# Custom CSS for styling and improved readability
+# Custom CSS for styling and readability
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
@@ -102,45 +101,76 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar Navigation and Email Subscription
-st.sidebar.markdown("## 🔍 Filter News")
-selected_politicians = st.sidebar.multiselect(
-    "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
-)
-keyword = st.sidebar.text_input("Search for a topic (optional):")
-news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
+# Page Selection: News or Videos
+page = st.sidebar.radio("Select Page:", ["News", "Videos"])
 
-st.sidebar.markdown("## 📩 Subscribe for Daily News")
-email = st.sidebar.text_input("Enter your email for daily updates")
-if st.sidebar.button("Subscribe"):
-    if email:
-        save_email(email)
-        st.sidebar.success("✅ Subscribed! You’ll receive daily updates.")
-    else:
-        st.sidebar.warning("⚠️ Please enter a valid email.")
-
-# Main Page Title and Description
-st.title("🗳️ NC Political News Tracker")
-st.markdown("""
-#### Get the latest news on North Carolina politics, featuring:
-**Alma Adams**, **Don Davis**, **Mayor Vi Lyles**, and **Mayor Karen Bass**.
-""")
-
-# Display news articles for each selected politician
-if selected_politicians:
-    for person in selected_politicians:
-        news_articles = get_news(person, keyword=keyword, limit=news_limit)
-        if news_articles:
-            st.markdown(f"## 📰 Latest News on {person}")
-            for article in news_articles:
-                col1, col2 = st.columns([1, 3])  # Left column for image, right for text
-                with col1:
-                    st.image(article["Image"], use_container_width=True)
-                with col2:
-                    st.markdown(f"### {article['Title']}")
-                    st.markdown(f"🕒 {article['Published']}")
-                    st.markdown(f"[🔗 Read More]({article['Link']})")
+if page == "News":
+    # Auto-refresh the News page every 60 seconds
+    st_autorefresh(interval=60000, limit=100, key="news_refresh")
+    
+    # Sidebar components for the News page
+    st.sidebar.markdown("## 🔍 Filter News")
+    selected_politicians = st.sidebar.multiselect(
+        "Select Politician(s)", list(URLS.keys()), default=list(URLS.keys())
+    )
+    keyword = st.sidebar.text_input("Search for a topic (optional):")
+    news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
+    
+    st.sidebar.markdown("## 📩 Subscribe for Daily News")
+    email = st.sidebar.text_input("Enter your email for daily updates")
+    if st.sidebar.button("Subscribe"):
+        if email:
+            save_email(email)
+            st.sidebar.success("✅ Subscribed! You’ll receive daily updates.")
         else:
-            st.warning(f"No recent news found for {person}.")
-else:
-    st.info("Please select at least one politician to see news.")
+            st.sidebar.warning("⚠️ Please enter a valid email.")
+    
+    # Main News Page Content
+    st.title("🗳️ NC Political News Tracker - News")
+    st.markdown("""
+    #### Get the latest news on North Carolina politics, featuring:
+    **Alma Adams**, **Don Davis**, **Mayor Vi Lyles**, and **Mayor Karen Bass**.
+    """)
+    
+    if selected_politicians:
+        for person in selected_politicians:
+            news_articles = get_news(person, keyword=keyword, limit=news_limit)
+            if news_articles:
+                st.markdown(f"## 📰 Latest News on {person}")
+                for article in news_articles:
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        st.image(article["Image"], use_container_width=True)
+                    with col2:
+                        st.markdown(f"### {article['Title']}")
+                        st.markdown(f"🕒 {article['Published']}")
+                        st.markdown(f"[🔗 Read More]({article['Link']})")
+            else:
+                st.warning(f"No recent news found for {person}.")
+    else:
+        st.info("Please select at least one politician to see news.")
+
+elif page == "Videos":
+    # Videos Page Content
+    st.title("🎥 Politician Videos")
+    st.markdown("Learn more about the featured politicians through curated videos and brief biographies.")
+    
+    # Alma Adams
+    st.markdown("### Alma Adams")
+    st.markdown("Alma Adams is a U.S. Representative for North Carolina, known for her advocacy for civil rights and community empowerment.")
+    st.video("https://www.youtube.com/watch?v=abc123")  # Replace with a relevant video URL
+    
+    # Don Davis
+    st.markdown("### Don Davis")
+    st.markdown("Don Davis is a prominent political figure in North Carolina, focusing on local issues and community development.")
+    st.video("https://www.youtube.com/watch?v=def456")  # Replace with a relevant video URL
+    
+    # Mayor Vi Lyles
+    st.markdown("### Mayor Vi Lyles")
+    st.markdown("Mayor Vi Lyles is the Mayor of Charlotte, North Carolina, dedicated to driving innovation and growth in the city.")
+    st.video("https://www.youtube.com/watch?v=ghi789")  # Replace with a relevant video URL
+    
+    # Mayor Karen Bass
+    st.markdown("### Mayor Karen Bass")
+    st.markdown("Mayor Karen Bass is the Mayor of Los Angeles, known for her commitment to social justice and public service.")
+    st.video("https://www.youtube.com/watch?v=jkl012")  # Replace with a relevant video URL
