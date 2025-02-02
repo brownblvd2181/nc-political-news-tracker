@@ -2,12 +2,15 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import csv
 
 # Define Google News RSS feeds for each politician
 URLS = {
     "Alma Adams": "https://news.google.com/rss/search?q=Alma+Adams+North+Carolina",
     "Don Davis": "https://news.google.com/rss/search?q=Don+Davis+North+Carolina"
 }
+
+DEFAULT_IMAGE = "https://via.placeholder.com/150/3498db/ffffff?text=News"  # Default thumbnail
 
 def get_news(person, keyword="", limit=5):
     """Fetch the top news articles for the given person from Google News RSS, with optional keyword filtering."""
@@ -21,18 +24,28 @@ def get_news(person, keyword="", limit=5):
     articles = []
     for item in soup.find_all("item")[:limit]:
         title = item.title.text
+        link = item.link.text
         
-        # Apply keyword filter if a keyword is provided
+        # Apply keyword filter if provided
         if keyword and keyword.lower() not in title.lower():
             continue
 
         articles.append({
             "Title": title,
-            "Link": item.link.text,
-            "Published": item.pubDate.text
+            "Link": link,
+            "Published": item.pubDate.text,
+            "Image": DEFAULT_IMAGE  # Assign default image
         })
     
     return articles
+
+# Function to save emails
+def save_email(email):
+    """Save email to CSV for future newsletters."""
+    with open("subscribers.csv", "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([email])
+    return True
 
 # Streamlit UI Configuration
 st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", layout="wide")
@@ -40,9 +53,11 @@ st.set_page_config(page_title="NC Political News Tracker", page_icon="🗳️", 
 # Custom CSS for better styling
 st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
+        
         body { 
-            font-family: 'Arial', sans-serif;
-            background-color: #f5f5f5;
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
         }
         .news-container {
             padding: 20px;
@@ -50,6 +65,14 @@ st.markdown("""
             background-color: white;
             box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .news-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            margin-right: 15px;
         }
         .news-title {
             font-size: 20px;
@@ -71,16 +94,12 @@ st.markdown("""
             font-weight: bold;
             color: #34495e;
         }
-        .stButton>button {
-            width: 100%;
-            border-radius: 8px;
-            background-color: #3498db;
-            color: white;
-            padding: 10px;
-            font-size: 16px;
-        }
-        .stButton>button:hover {
-            background-color: #2980b9;
+        .email-box {
+            padding: 15px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -93,6 +112,16 @@ selected_politicians = st.sidebar.multiselect(
 keyword = st.sidebar.text_input("Search for a topic (optional):")
 news_limit = st.sidebar.slider("Number of Articles", min_value=1, max_value=15, value=5)
 
+# Email Subscription Section
+st.sidebar.markdown('<p class="sidebar-title">📩 Subscribe for Daily News</p>', unsafe_allow_html=True)
+email = st.sidebar.text_input("Enter your email for daily updates")
+if st.sidebar.button("Subscribe"):
+    if email:
+        save_email(email)
+        st.sidebar.success("✅ Subscribed! You’ll receive daily updates.")
+    else:
+        st.sidebar.warning("⚠️ Please enter a valid email.")
+
 # Main Page Title
 st.title("🗳️ NC Political News Tracker")
 st.markdown("#### Get the latest news on North Carolina politics, featuring **Alma Adams** and **Don Davis**.")
@@ -104,17 +133,18 @@ if selected_politicians:
         
         if news_articles:
             st.markdown(f"## 📰 Latest News on {person}")
-            cols = st.columns(2)  # Use two columns for news layout
             
-            for i, article in enumerate(news_articles):
-                with cols[i % 2]:  # Alternate between columns
-                    st.markdown('<div class="news-container">', unsafe_allow_html=True)
+            for article in news_articles:
+                st.markdown('<div class="news-container">', unsafe_allow_html=True)
+                col1, col2 = st.columns([1, 3])  # Image on left, text on right
+                with col1:
+                    st.image(article["Image"], use_column_width=True)
+                with col2:
                     st.markdown(f'<p class="news-title">{article["Title"]}</p>', unsafe_allow_html=True)
                     st.markdown(f'<p class="news-meta">Published: {article["Published"]}</p>', unsafe_allow_html=True)
                     st.markdown(f'<a class="news-link" href="{article["Link"]}" target="_blank">Read More</a>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.warning(f"No recent news found for {person}.")
 else:
     st.info("Please select at least one politician to see news.")
-
